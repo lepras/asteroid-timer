@@ -28,19 +28,20 @@ Application {
     centerColor: "#A6005F"
     outerColor: "#0C0003"
 
-    Component {
+    property int timerNb: index
+
+    property var alarmObject: null
+    property var startDate: 0
+    property int selectedTime: 0
+    property int seconds: 5*60
+
+    function zeroPad(n) {
+        return (n < 10 ? "0" : "") + n
+    }
+
+    Item {
         id: timerDelegate
-
-        property int timerNb: index
-
-        property var alarmObject: null
-        property var startDate: 0
-        property int selectedTime: 0
-        property int seconds: 5*60
-
-        function zeroPad(n) {
-            return (n < 10 ? "0" : "") + n
-        }
+        anchors.fill: parent
 
         ConfigurationValue {
             id: lastTimerDuration
@@ -118,7 +119,7 @@ Application {
             text: "h"
             anchors {
                 centerIn: app
-                vertic alCenterOffset: -app.height * 0.056
+                verticalCenterOffset: -app.height * 0.056
                 horizontalCenterOffset: -app.width * 0.199
             }
             horizontalAlignment: Text.AlignHCenter
