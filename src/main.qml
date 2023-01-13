@@ -28,171 +28,199 @@ Application {
     centerColor: "#A6005F"
     outerColor: "#0C0003"
 
-    property var alarmObject: null
-    property var startDate: 0
-    property int selectedTime: 0
-    property int seconds: 5*60
+    Component {
+        id: timerDelegate
 
-    function zeroPad(n) {
-        return (n < 10 ? "0" : "") + n
-    }
+        property int timerNb: index
 
-    ConfigurationValue {
-        id: lastTimerDuration
-        key: "/org/asteroidos/timer/last-timer-duration"
-        defaultValue: 5*60
-    }
+        property var alarmObject: null
+        property var startDate: 0
+        property int selectedTime: 0
+        property int seconds: 5*60
 
-    AlarmsModel {
-        id: alarmModel
-        onlyCountdown: true
-        onPopulatedChanged: {
-            for (var i=0; rowCount() > i; i++) {
-                // Get Alarm object using AlarmObjectRole(=0x0100)
-                var alarm = alarmModel.data(alarmModel.index(i, 0), 0x0100)
-                if (!alarm.enabled) {
-                    alarm.deleteAlarm()
+        function zeroPad(n) {
+            return (n < 10 ? "0" : "") + n
+        }
+
+        ConfigurationValue {
+            id: lastTimerDuration
+            key: "/org/asteroidos/timer/last-timer-duration-" + str(index)
+            defaultValue: 5*60
+        }
+
+        AlarmsModel {
+            id: alarmModel
+            onlyCountdown: true
+            onPopulatedChanged: {
+                for (var i=0; rowCount() > i; i++) {
+                    // Get Alarm object using AlarmObjectRole(=0x0100) // TODO alarms -> with index
+                    var alarm = alarmModel.data(alarmModel.index(i, 0), 0x0100)
+                    if (!alarm.enabled) {
+                        alarm.deleteAlarm()
+                    } else {
+                        alarmObject = alarm
+                        startDate = new Date
+                        seconds = alarm.triggerTime - (startDate.getTime()/1000)
+                        selectedTime = seconds
+                        timer.start()
+                    }
+                }
+            }
+        }
+
+        Row {
+            id: mainRow
+            anchors {
+                verticalCenter: parent.verticalCenter
+                verticalCenterOffset: -parent.height * 0.002
+                left: parent.left
+                leftMargin: Dims.w(15.9)
+                right: parent.right
+                rightMargin: Dims.w(1.6)
+            }
+            height: Dims.h(70)
+
+            Spinner {
+                id: hourLV
+                currentIndex: lastTimerDuration.value / 3600
+                enabled: !timer.running
+                height: parent.height
+                width: parent.width * 0.16
+                model: 24
+                delegate: SpinnerDelegate { text: zeroPad(index) }
+                onCurrentIndexChanged: if(enabled) seconds = secondLV.currentIndex + 60*minuteLV.currentIndex + 3600*hourLV.currentIndex
+            }
+
+            Spinner {
+                id: minuteLV
+                currentIndex: (lastTimerDuration.value % 3600) / 60
+                enabled: !timer.running
+                height: parent.height
+                width: parent.width * 0.505
+                model: 60
+                highlightMoveDuration: currentIndex != 0 ? 400 : 0
+                onCurrentIndexChanged: if(enabled) seconds = secondLV.currentIndex + 60*minuteLV.currentIndex + 3600*hourLV.currentIndex
+            }
+
+            Spinner {
+                id: secondLV
+                currentIndex: lastTimerDuration.value % 60
+                enabled: !timer.running
+                height: parent.height
+                width: parent.width * 0.16
+                model: 60
+                highlightMoveDuration: currentIndex != 0 ? 400 : 0
+                onCurrentIndexChanged: if(enabled) seconds = secondLV.currentIndex + 60*minuteLV.currentIndex + 3600*hourLV.currentIndex
+            }
+        }
+
+        Label {
+            text: "h"
+            anchors {
+                centerIn: app
+                vertic alCenterOffset: -app.height * 0.056
+                horizontalCenterOffset: -app.width * 0.199
+            }
+            horizontalAlignment: Text.AlignHCenter
+            font.pixelSize: Dims.l(6.4)
+            font.styleName: "Medium"
+            opacity:0.9
+        }
+
+        Label {
+            text: "m"
+            anchors {
+                centerIn: app
+                verticalCenterOffset: -app.height * 0.056
+                horizontalCenterOffset: app.width * 0.084
+            }
+            horizontalAlignment: Text.AlignHCenter
+            font.pixelSize: Dims.l(6.4)
+            font.styleName: "Medium"
+            opacity:0.9
+        }
+
+        Label {
+            text: "s"
+            anchors {
+                centerIn: app
+                verticalCenterOffset: -app.height * 0.056
+                horizontalCenterOffset: app.width * 0.343
+            }
+            horizontalAlignment: Text.AlignHCenter
+            font.pixelSize: Dims.l(6.4)
+            font.styleName: "Medium"
+            opacity:0.9
+        }
+
+        IconButton {
+            id: iconButton
+            iconName: timer.running ? "ios-pause" : "ios-timer-outline"
+            visible: seconds !== 0
+            anchors { 
+                bottom: parent.bottom
+                horizontalCenter: parent.horizontalCenter
+                bottomMargin: Dims.iconButtonMargin
+            }
+
+            onClicked: {
+                if (alarmObject !== null) {
+                    alarmObject.deleteAlarm()
+                    timer.stop()
                 } else {
-                    alarmObject = alarm
+                    alarmObject = alarmModel.createAlarm()
+                    alarmObject.countdown = true
+                    alarmObject.second = seconds-1
+                    alarmObject.title = "";
+                    alarmObject.enabled = true
+                    alarmObject.save()
+
                     startDate = new Date
-                    seconds = alarm.triggerTime - (startDate.getTime()/1000)
-                    selectedTime = seconds
+                    lastTimerDuration.value = selectedTime = seconds
                     timer.start()
+                }
+            }
+        }
+
+        Timer {
+            id: timer
+            running: false
+            repeat: true
+            interval: 500
+            triggeredOnStart: true
+            onTriggered: {
+                if(seconds <= 0) {
+                    timer.stop()
+                } else {
+                    var currentDate = new Date
+                    seconds = selectedTime - (currentDate.getTime() - startDate.getTime())/1000
+                    secondLV.currentIndex = seconds%60
+                    minuteLV.currentIndex = (seconds%3600)/60
+                    hourLV.currentIndex = seconds/3600
                 }
             }
         }
     }
 
-    Row {
-        id: mainRow
-        anchors {
-            verticalCenter: parent.verticalCenter
-            verticalCenterOffset: -parent.height * 0.002
-            left: parent.left
-            leftMargin: Dims.w(15.9)
-            right: parent.right
-            rightMargin: Dims.w(1.6)
-        }
-        height: Dims.h(70)
+    ListView {
+        id: lv
 
-        Spinner {
-            id: hourLV
-            currentIndex: lastTimerDuration.value / 3600
-            enabled: !timer.running
-            height: parent.height
-            width: parent.width * 0.16
-            model: 24
-            delegate: SpinnerDelegate { text: zeroPad(index) }
-            onCurrentIndexChanged: if(enabled) seconds = secondLV.currentIndex + 60*minuteLV.currentIndex + 3600*hourLV.currentIndex
-        }
-
-        Spinner {
-            id: minuteLV
-            currentIndex: (lastTimerDuration.value % 3600) / 60
-            enabled: !timer.running
-            height: parent.height
-            width: parent.width * 0.505
-            model: 60
-            highlightMoveDuration: currentIndex != 0 ? 400 : 0
-            onCurrentIndexChanged: if(enabled) seconds = secondLV.currentIndex + 60*minuteLV.currentIndex + 3600*hourLV.currentIndex
-        }
-
-        Spinner {
-            id: secondLV
-            currentIndex: lastTimerDuration.value % 60
-            enabled: !timer.running
-            height: parent.height
-            width: parent.width * 0.16
-            model: 60
-            highlightMoveDuration: currentIndex != 0 ? 400 : 0
-            onCurrentIndexChanged: if(enabled) seconds = secondLV.currentIndex + 60*minuteLV.currentIndex + 3600*hourLV.currentIndex
-        }
+        anchors.fill:parent
+        model: availableTimers()
+        delegate: timerDelegate
+        orientation: ListView.Horizontal
+        snapMode: ListView.SnapOneItem
+        highlightRangeMode: ListView.StrictlyEnforceRange
     }
 
-    Label {
-        text: "h"
+    PageDot {
+        height: Dims.h(3)
         anchors {
-            centerIn: app
-            verticalCenterOffset: -app.height * 0.056
-            horizontalCenterOffset: -app.width * 0.199
-        }
-        horizontalAlignment: Text.AlignHCenter
-        font.pixelSize: Dims.l(6.4)
-        font.styleName: "Medium"
-        opacity:0.9
-    }
-
-    Label {
-        text: "m"
-        anchors {
-            centerIn: app
-            verticalCenterOffset: -app.height * 0.056
-            horizontalCenterOffset: app.width * 0.084
-        }
-        horizontalAlignment: Text.AlignHCenter
-        font.pixelSize: Dims.l(6.4)
-        font.styleName: "Medium"
-        opacity:0.9
-    }
-
-    Label {
-        text: "s"
-        anchors {
-            centerIn: app
-            verticalCenterOffset: -app.height * 0.056
-            horizontalCenterOffset: app.width * 0.343
-        }
-        horizontalAlignment: Text.AlignHCenter
-        font.pixelSize: Dims.l(6.4)
-        font.styleName: "Medium"
-        opacity:0.9
-    }
-
-    IconButton {
-        id: iconButton
-        iconName: timer.running ? "ios-pause" : "ios-timer-outline"
-        visible: seconds !== 0
-        anchors { 
-            bottom: parent.bottom
             horizontalCenter: parent.horizontalCenter
-            bottomMargin: Dims.iconButtonMargin
+            bottom: parent.bottom
+            bottomMargin: Dims.h(3.8)
         }
-
-        onClicked: {
-            if (alarmObject !== null) {
-                alarmObject.deleteAlarm()
-                timer.stop()
-            } else {
-                alarmObject = alarmModel.createAlarm()
-                alarmObject.countdown = true
-                alarmObject.second = seconds-1
-                alarmObject.title = "";
-                alarmObject.enabled = true
-                alarmObject.save()
-
-                startDate = new Date
-                lastTimerDuration.value = selectedTime = seconds
-                timer.start()
-            }
-        }
-    }
-
-    Timer {
-        id: timer
-        running: false
-        repeat: true
-        interval: 500
-        triggeredOnStart: true
-        onTriggered: {
-            if(seconds <= 0) {
-                timer.stop()
-            } else {
-                var currentDate = new Date
-                seconds = selectedTime - (currentDate.getTime() - startDate.getTime())/1000
-                secondLV.currentIndex = seconds%60
-                minuteLV.currentIndex = (seconds%3600)/60
-                hourLV.currentIndex = seconds/3600
-            }
-        }
+        currentIndex: lv.currentIndex
+        dotNumber: availableTimers()
     }
 }
