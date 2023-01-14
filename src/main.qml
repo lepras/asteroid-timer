@@ -1,5 +1,6 @@
 /*
- * Copyright (C) 2021 Timo Könnecke <github.com/eLtMosen>
+ * Copyright (C) 2023 Lepras <heyabhinav@protonmail.com>
+ *               2021 Timo Könnecke <github.com/eLtMosen>
  *               2016 Sylvia van Os <iamsylvie@openmailbox.org>
  *               2015 Florent Revest <revestflo@gmail.com>
  *
