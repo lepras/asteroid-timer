@@ -41,6 +41,8 @@ Application {
         return (n < 10 ? "0" : "") + n
     }
 
+    // TODO fix layout
+
     Component {
         id: timerDelegate
     
@@ -71,6 +73,14 @@ Application {
                             timer.start()
                         }
                     }
+                }
+            }
+
+            IconButton {
+                id: addTimer
+                iconName: "ios-add"
+                onClicked: {
+                    // TODO add timer
                 }
             }
 
